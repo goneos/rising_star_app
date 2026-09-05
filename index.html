@@ -5,23 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Rising Star</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#28363E;
     --ink-soft:#5B6B72;
-    --amber:#E8A33D;
-    --amber-deep:#C97F1D;
-    --sky-top:#2E4A63;
-    --sky-mid:#6B8CA8;
-    --sky-horizon:#F3D9AE;
-    --ground:#F3F6F5;
+    --teal:#17A5A0;
+    --teal-deep:#0E7A76;
+    --gold-light:#FDD64B;
+    --gold:#F9BE00;
+    --gold-deep:#D89A00;
+    --bg:#FFFFFF;
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   html,body{
     height:100%;
     overflow:hidden;
-    background:var(--ground);
+    background:var(--bg);
     font-family:'Atkinson Hyperlegible', sans-serif;
     user-select:none;
     -webkit-tap-highlight-color:transparent;
@@ -30,24 +29,11 @@
   #splash{
     position:fixed; inset:0;
     display:flex; align-items:center; justify-content:center;
-    background: linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-mid) 45%, var(--sky-horizon) 78%, var(--ground) 100%);
+    background: radial-gradient(circle at 50% 38%, #FFFDF6 0%, #FFFFFF 55%, #F4FBFA 100%);
     transition: opacity 0.7s ease;
     cursor:pointer;
   }
   #splash.fade-out{ opacity:0; }
-
-  .twinkle{
-    position:absolute;
-    width:4px; height:4px;
-    background:#fff;
-    border-radius:50%;
-    opacity:0;
-    animation: tw 2.6s ease-in-out infinite;
-  }
-  @keyframes tw{
-    0%,100%{ opacity:0; transform:scale(0.6); }
-    50%{ opacity:0.85; transform:scale(1.2); }
-  }
 
   .stage{
     position:relative;
@@ -61,21 +47,21 @@
 
   .star-wrap{
     position:relative;
-    width: clamp(120px,16vw,180px);
-    height: clamp(120px,16vw,180px);
-    transform: translateY(120px);
+    width: clamp(160px,22vw,240px);
+    height: clamp(190px,26vw,285px);
+    transform: translateY(130px);
     opacity:0;
     animation: rise 1.6s cubic-bezier(.22,1.1,.36,1) 0.3s forwards;
   }
   @keyframes rise{
-    0%{ transform:translateY(140px) scale(0.7); opacity:0; }
+    0%{ transform:translateY(150px) scale(0.7); opacity:0; }
     60%{ opacity:1; }
     100%{ transform:translateY(0) scale(1); opacity:1; }
   }
 
   .glow{
-    position:absolute; inset:-30%;
-    background: radial-gradient(circle, rgba(232,163,61,0.55) 0%, rgba(232,163,61,0) 70%);
+    position:absolute; inset:-22%;
+    background: radial-gradient(circle, rgba(249,190,0,0.35) 0%, rgba(23,165,160,0) 70%);
     border-radius:50%;
     animation: pulse 2.2s ease-in-out infinite;
     animation-delay: 1.9s;
@@ -83,32 +69,34 @@
   }
   @keyframes pulse{
     0%,100%{ transform:scale(0.9); opacity:0.5; }
-    50%{ transform:scale(1.15); opacity:0.9; }
+    50%{ transform:scale(1.12); opacity:0.9; }
   }
   .star-wrap.settled .glow{ opacity:1; }
 
-  svg.star{
+  svg.logo-mark{
     position:relative;
     width:100%; height:100%;
-    filter: drop-shadow(0 6px 18px rgba(201,127,29,0.35));
+    filter: drop-shadow(0 8px 16px rgba(14,122,118,0.18));
   }
 
   .brand{
-    margin-top: 34px;
+    margin-top: 8px;
     font-family:'Baloo 2', sans-serif;
-    font-size: clamp(28px,4vw,42px);
     font-weight:700;
-    color:#fff;
-    letter-spacing:0.5px;
+    color:var(--teal);
+    line-height:0.98;
+    text-align:center;
     opacity:0;
     transform:translateY(10px);
     animation: fadeUp 0.9s ease 1.6s forwards;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.15);
   }
+  .brand .line1{ font-size: clamp(30px,4.6vw,46px); display:block; }
+  .brand .line2{ font-size: clamp(34px,5.2vw,52px); display:block; }
+
   .tagline{
-    margin-top:10px;
-    font-size: clamp(15px,1.6vw,18px);
-    color: rgba(255,255,255,0.85);
+    margin-top:14px;
+    font-size: clamp(14px,1.6vw,17px);
+    color: var(--ink-soft);
     font-weight:400;
     opacity:0;
     animation: fadeUp 0.9s ease 2.1s forwards;
@@ -121,7 +109,7 @@
     position:absolute;
     bottom: 34px;
     font-size:14px;
-    color: rgba(255,255,255,0.7);
+    color: var(--ink-soft);
     opacity:0;
     animation: fadeUp 0.8s ease 2.6s forwards;
   }
@@ -133,36 +121,53 @@
   <div class="stage" id="stage">
     <div class="star-wrap" id="starWrap">
       <div class="glow"></div>
-      <svg class="star" viewBox="0 0 100 100">
-        <path fill="#E8A33D" stroke="#C97F1D" stroke-width="2" stroke-linejoin="round"
-          d="M50 6
-             C53 28 58 40 50 50
-             C58 40 74 42 92 44
-             C74 46 60 54 55 66
-             C60 78 58 92 50 100
-             C48 92 42 78 45 66
-             C40 54 26 46 8 44
-             C26 42 42 40 45 50
-             C42 40 47 28 50 6 Z"/>
+      <svg class="logo-mark" viewBox="0 0 220 260">
+        <defs>
+          <linearGradient id="goldFace" x1="0%" y1="0%" x2="100%" y2="10%">
+            <stop offset="0%" stop-color="#D89A00"/>
+            <stop offset="48%" stop-color="#F9BE00"/>
+            <stop offset="100%" stop-color="#FDD64B"/>
+          </linearGradient>
+        </defs>
+
+        <!-- teal dome arc behind the star -->
+        <path d="M 30 150 A 80 80 0 1 1 190 150 Z"
+              fill="var(--gold)" stroke="var(--teal)" stroke-width="10" stroke-linejoin="round"/>
+
+        <!-- star: teal outline layer -->
+        <path transform="translate(110,140)"
+          d="M0 -95 L22 -30 L92 -30 L36 10 L57 78 L0 36 L-57 78 L-36 10 L-92 -30 L-22 -30 Z"
+          fill="var(--teal)"/>
+
+        <!-- star: white separation ring -->
+        <path transform="translate(110,140) scale(0.90)"
+          d="M0 -95 L22 -30 L92 -30 L36 10 L57 78 L0 36 L-57 78 L-36 10 L-92 -30 L-22 -30 Z"
+          fill="#FFFFFF"/>
+
+        <!-- star: gold face -->
+        <path transform="translate(110,140) scale(0.82)"
+          d="M0 -95 L22 -30 L92 -30 L36 10 L57 78 L0 36 L-57 78 L-36 10 L-92 -30 L-22 -30 Z"
+          fill="url(#goldFace)"/>
+
+        <!-- subtle facet lines for a faceted-gem feel -->
+        <g transform="translate(110,140) scale(0.82)" stroke="#C98600" stroke-width="2.5" opacity="0.55" stroke-linecap="round">
+          <line x1="0" y1="0" x2="0" y2="-95"/>
+          <line x1="0" y1="0" x2="57" y2="78"/>
+          <line x1="0" y1="0" x2="-57" y2="78"/>
+        </g>
       </svg>
     </div>
-    <div class="brand">Rising Star</div>
+    <div class="brand">
+      <span class="line1">Rising</span>
+      <span class="line2">Star</span>
+    </div>
     <div class="tagline">Getting your day ready&hellip;</div>
   </div>
   <div class="hint">Tap to continue</div>
 </div>
 
 <script>
-  // scatter some twinkles
   const splash = document.getElementById('splash');
-  for(let i=0;i<28;i++){
-    const t = document.createElement('div');
-    t.className = 'twinkle';
-    t.style.left = Math.random()*100 + '%';
-    t.style.top = (Math.random()*55) + '%';
-    t.style.animationDelay = (Math.random()*2.6) + 's';
-    splash.appendChild(t);
-  }
 
   setTimeout(()=>{
     document.getElementById('starWrap').classList.add('settled');
@@ -177,9 +182,7 @@
     setTimeout(()=>{ window.location.href = HUB_URL; }, 650);
   }
 
-  // auto-advance after the animation plays
   setTimeout(goToHub, 3600);
-  // let people skip it early
   splash.addEventListener('click', goToHub);
 </script>
 
