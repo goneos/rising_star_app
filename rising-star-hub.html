@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Today &mdash; Routine Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Baloo+2:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://alcdn.msauth.net/browser/2.37.1/js/msal-browser.min.js"></script>
+<style>
+  :root{
+    --bg: #F3F6F5;
+    --panel: #FFFFFF;
+    --ink: #28363E;
+    --ink-soft: #5B6B72;
+    --amber: #E8A33D;
+    --amber-deep: #C97F1D;
+    --sage: #7A9E85;
+    --line: #DDE5E3;
+
+    --weather-bg: #DCEEF5; --weather-ic: #3E7C99;
+    --cal-bg: #E9E3F5;     --cal-ic: #6E5A9E;
+    --activity-bg: #FBEBD0; --activity-ic: #C97F1D;
+    --reminders-bg: #E1EDE3; --reminders-ic: #4F7A5C;
+    --mood-bg: #F5E3E3;     --mood-ic: #B85C5C;
+    --call-bg: #DDE6F5;     --call-ic: #4A63A8;
+    --music-bg: #FBE7D6;    --music-ic: #C46A2E;
+    --help-bg: #F6D6D6;     --help-ic: #A93636;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Atkinson Hyperlegible', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior:none;
+    user-select:none;
+  }
+  .display{ font-family:'Baloo 2', sans-serif; }
+
+  #app{
+    height:100vh;
+    width:100vw;
+    display:flex;
+    flex-direction:column;
+    padding: clamp(16px, 2.4vw, 36px);
+    position:relative;
+  }
+
+  /* ---------- HEADER / DAY ARC ---------- */
+  header{
+    background:var(--panel);
+    border-radius:28px;
+    padding: 20px 32px;
+    display:flex;
+    align-items:center;
+    gap: 28px;
+    box-shadow: 0 6px 18px rgba(40,54,62,0.06);
+    flex-shrink:0;
+  }
+  .date-block{ min-width: 200px; }
+  .greeting{ font-size: clamp(20px,2.1vw,26px); color:var(--ink-soft); margin:0 0 2px 0; font-weight:700;}
+  .date-line{ font-size: clamp(26px,3vw,34px); margin:0; font-weight:700; }
+  .arc-wrap{ flex:1; display:flex; align-items:center; justify-content:center; }
+  svg.arc{ width:100%; max-width:640px; height:auto; }
+  .arc-path{ fill:none; stroke:var(--line); stroke-width:10; stroke-linecap:round; }
+  .arc-fill{ fill:none; stroke:var(--amber); stroke-width:10; stroke-linecap:round; opacity:0.85;}
+  .arc-marker circle{ fill:var(--panel); stroke:var(--amber-deep); stroke-width:4; }
+  .arc-label{ font-size:14px; fill:var(--ink-soft); font-family:'Atkinson Hyperlegible', sans-serif; font-weight:700;}
+
+  /* ---------- GRID ---------- */
+  #grid{
+    flex:1;
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: clamp(14px, 1.6vw, 24px);
+    margin-top: clamp(14px, 1.6vw, 24px);
+    min-height:0;
+  }
+  @media (max-aspect-ratio: 4/5){
+    #grid{ grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); }
+  }
+
+  .tile{
+    border:none;
+    border-radius: 26px;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:space-between;
+    padding: clamp(18px, 2vw, 28px);
+    cursor:pointer;
+    text-align:left;
+    font-family:inherit;
+    color:var(--ink);
+    box-shadow: 0 6px 16px rgba(40,54,62,0.07);
+    transition: transform .12s ease, box-shadow .12s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  .tile:active{ transform: scale(0.965); box-shadow: 0 3px 8px rgba(40,54,62,0.08); }
+  .tile .icon{ width: clamp(46px,4.6vw,64px); height: clamp(46px,4.6vw,64px); }
+  .tile .label{ font-size: clamp(19px,1.9vw,26px); font-weight:700; }
+  .tile .sub{ font-size: clamp(14px,1.3vw,17px); color:var(--ink-soft); font-weight:400; margin-top:2px; }
+  .tile .badge{
+    position:absolute; top:16px; right:16px;
+    background:rgba(255,255,255,0.75); border-radius:999px;
+    padding:6px 14px; font-weight:700; font-size:15px;
+  }
+
+  #t-weather{ background:var(--weather-bg); } #t-weather .icon,#t-weather .badge{ color:var(--weather-ic); }
+  #t-calendar{ background:var(--cal-bg); } #t-calendar .icon,#t-calendar .badge{ color:var(--cal-ic); }
+  #t-activity{ background:var(--activity-bg); } #t-activity .icon,#t-activity .badge{ color:var(--activity-ic); }
+  #t-reminders{ background:var(--reminders-bg); } #t-reminders .icon,#t-reminders .badge{ color:var(--reminders-ic); }
+  #t-mood{ background:var(--mood-bg); } #t-mood .icon,#t-mood .badge{ color:var(--mood-ic); }
+  #t-call{ background:var(--call-bg); } #t-call .icon,#t-call .badge{ color:var(--call-ic); }
+  #t-music{ background:var(--music-bg); } #t-music .icon,#t-music .badge{ color:var(--music-ic); }
+  #t-help{ background:var(--help-bg); border: 3px solid #E7A9A9; } #t-help .icon,#t-help .badge{ color:var(--help-ic); }
+
+  .label, .sub, .badge{ font-family:'Baloo 2', sans-serif; }
+
+  /* ---------- DETAIL VIEWS ---------- */
+  .detail{
+    position:absolute; inset:0;
+    background:var(--bg);
+    padding: clamp(16px,2.4vw,36px);
+    display:none;
+    flex-direction:column;
+    animation: rise .18s ease;
+  }
+  .detail.active{ display:flex; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);} }
+
+  .back-btn{
+    display:flex; align-items:center; gap:10px;
+    background:var(--panel); border:none; border-radius:999px;
+    padding: 14px 26px; font-size:19px; font-weight:700;
+    font-family:'Baloo 2', sans-serif; color:var(--ink);
+    box-shadow: 0 4px 12px rgba(40,54,62,0.08);
+    cursor:pointer; align-self:flex-start; flex-shrink:0;
+  }
+  .back-btn:active{ transform:scale(0.97); }
+  .detail-title{ font-size: clamp(28px,3.2vw,40px); margin: 22px 0 6px 0; font-family:'Baloo 2',sans-serif; font-weight:700;}
+  .detail-body{ flex:1; overflow:auto; margin-top:10px; }
+
+  .card{
+    background:var(--panel); border-radius:24px; padding:26px 30px;
+    box-shadow:0 6px 16px rgba(40,54,62,0.06); margin-bottom:18px;
+  }
+
+  /* Weather */
+  .weather-hero{ display:flex; align-items:center; gap:28px; }
+  .weather-hero .big-temp{ font-size:96px; font-weight:700; font-family:'Baloo 2',sans-serif; color:var(--weather-ic); }
+  .weather-hero .cond{ font-size:26px; color:var(--ink-soft); font-weight:700; }
+  .forecast-row{ display:flex; gap:16px; margin-top:18px; flex-wrap:wrap; }
+  .forecast-chip{ background:var(--weather-bg); border-radius:18px; padding:16px 22px; text-align:center; min-width:110px;}
+  .forecast-chip .t{ font-weight:700; font-size:22px; font-family:'Baloo 2',sans-serif; color:var(--weather-ic);}
+
+  /* Calendar */
+  .event-row{ display:flex; align-items:center; gap:20px; padding:16px 4px; border-bottom:1px solid var(--line); font-size:22px;}
+  .event-row:last-child{ border-bottom:none; }
+  .event-time{ font-weight:700; min-width:110px; color:var(--cal-ic); font-family:'Baloo 2',sans-serif; }
+
+  /* Activities */
+  .activity-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .activity-opt{
+    background:var(--panel); border:3px solid var(--line); border-radius:20px;
+    padding:22px 16px; text-align:center; font-size:20px; font-weight:700;
+    font-family:'Baloo 2',sans-serif; cursor:pointer;
+  }
+  .activity-opt.selected{ background:var(--activity-bg); border-color:var(--activity-ic); color:var(--activity-ic); }
+  .confirm-btn{
+    margin-top:20px; background:var(--activity-ic); color:#fff; border:none; border-radius:16px;
+    padding:18px; font-size:22px; font-weight:700; font-family:'Baloo 2',sans-serif; cursor:pointer; width:100%;
+  }
+  .confirm-msg{ margin-top:14px; font-size:18px; color:var(--sage); font-weight:700; display:none; }
+
+  /* Reminders */
+  .reminder-row{ display:flex; align-items:center; gap:18px; padding:16px 4px; border-bottom:1px solid var(--line); font-size:22px; cursor:pointer;}
+  .reminder-row:last-child{ border-bottom:none; }
+  .check{ width:34px; height:34px; border-radius:10px; border:3px solid var(--reminders-ic); flex-shrink:0; display:flex; align-items:center; justify-content:center;}
+  .reminder-row.done .check{ background:var(--reminders-ic); }
+  .reminder-row.done span.label-text{ text-decoration:line-through; color:var(--ink-soft); }
+
+  /* Mood */
+  .mood-grid{ display:flex; gap:18px; justify-content:center; margin-top:10px; flex-wrap:wrap;}
+  .mood-opt{ background:var(--panel); border:3px solid var(--line); border-radius:22px; padding:22px 26px; text-align:center; cursor:pointer; width:130px;}
+  .mood-opt.selected{ border-color:var(--mood-ic); background:var(--mood-bg); }
+  .mood-opt svg{ width:56px; height:56px; }
+  .mood-opt .m-label{ margin-top:8px; font-weight:700; font-family:'Baloo 2',sans-serif; font-size:17px;}
+
+  /* Call */
+  .contact-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+  .contact-card{ background:var(--panel); border-radius:22px; padding:24px; text-align:center; cursor:pointer; box-shadow:0 4px 12px rgba(40,54,62,0.06);}
+  .avatar{ width:84px; height:84px; border-radius:50%; background:var(--call-bg); margin:0 auto 12px; display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:700; color:var(--call-ic); font-family:'Baloo 2',sans-serif;}
+  .contact-name{ font-weight:700; font-size:20px; font-family:'Baloo 2',sans-serif;}
+  .calling-screen{ display:none; flex-direction:column; align-items:center; justify-content:center; flex:1; text-align:center;}
+  .calling-screen.active{ display:flex; }
+  .calling-screen .avatar{ width:140px; height:140px; font-size:52px; }
+  .calling-screen .status{ font-size:26px; margin-top:18px; color:var(--ink-soft); font-weight:700;}
+  .end-call{ margin-top:30px; background:#C24C4C; color:#fff; border:none; border-radius:999px; padding:16px 40px; font-size:20px; font-weight:700; font-family:'Baloo 2',sans-serif;}
+
+  /* Music */
+  .playlist-row{ display:flex; align-items:center; gap:18px; padding:16px 4px; border-bottom:1px solid var(--line); font-size:21px; cursor:pointer;}
+  .playlist-row:last-child{ border-bottom:none; }
+  .play-icon{ width:44px; height:44px; border-radius:50%; background:var(--music-bg); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--music-ic);}
+  .now-playing{ margin-top:6px; background:var(--music-bg); border-radius:20px; padding:20px 26px; display:none; align-items:center; gap:18px;}
+  .now-playing.active{ display:flex; }
+
+  /* Help */
+  .help-body{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;}
+  .help-big-btn{
+    background:var(--help-ic); color:#fff; border:none; border-radius:28px;
+    padding:34px 70px; font-size:30px; font-weight:700; font-family:'Baloo 2',sans-serif; cursor:pointer;
+    box-shadow:0 8px 20px rgba(169,54,54,0.25);
+  }
+  .help-sub{ margin-top:18px; font-size:19px; color:var(--ink-soft); max-width:420px; }
+  .help-confirmed{ display:none; }
+  .help-confirmed.active{ display:block; }
+  .cancel-help{ margin-top:22px; background:none; border:2px solid var(--line); border-radius:999px; padding:12px 28px; font-size:17px; font-weight:700; font-family:'Baloo 2',sans-serif; cursor:pointer;}
+
+  .brand-mark{
+    position:fixed;
+    bottom:14px;
+    right:22px;
+    font-family:'Baloo 2', sans-serif;
+    font-size:14px;
+    font-weight:600;
+    letter-spacing:0.3px;
+    color:var(--ink-soft);
+    opacity:0.45;
+    pointer-events:none;
+    z-index:999;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="brand-mark">Rising Star</div>
+
+  <!-- ===== HOME GRID ===== -->
+  <div id="home">
+    <header>
+      <div class="date-block">
+        <p class="greeting" id="greeting">Good morning</p>
+        <p class="date-line" id="dateLine">Thursday, 30 July</p>
+      </div>
+      <div class="arc-wrap">
+        <svg class="arc" viewBox="0 0 640 130">
+          <path class="arc-path" d="M 30 120 A 290 290 0 0 1 610 120" />
+          <path class="arc-fill" id="arcFill" d="M 30 120 A 290 290 0 0 1 610 120" />
+          <g id="arcMarker" class="arc-marker">
+            <circle r="14" cx="30" cy="120"/>
+          </g>
+          <text class="arc-label" x="30" y="15">Morning</text>
+          <text class="arc-label" x="290" y="15">Afternoon</text>
+          <text class="arc-label" x="540" y="15">Evening</text>
+        </svg>
+      </div>
+    </header>
+
+    <div id="grid">
+      <button class="tile" id="t-weather" onclick="openView('weather')">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="4"/><path d="M12 2v2M12 16v2M4.9 5l1.4 1.4M17.7 17.7l1.4 1.4M2 10h2M20 10h2M4.9 15l1.4-1.4M17.7 2.3l1.4-1.4"/></svg>
+        <span class="badge" id="weatherBadge">16°</span>
+        <div>
+          <div class="label">Weather</div>
+          <div class="sub">Canberra</div>
+        </div>
+      </button>
+
+      <button class="tile" id="t-calendar" onclick="openView('calendar')">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+        <span class="badge" id="calendarBadge">3 today</span>
+        <div>
+          <div class="label">Today's Plan</div>
+          <div class="sub">Synced from Outlook</div>
+        </div>
+      </button>
+
+      <button class="tile" id="t-activity" onclick="openView('activity')">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11"/></svg>
+        <div>
+          <div class="label">Select Activity</div>
+          <div class="sub">Choose what to do today</div>
+        </div>
+      </button>
+
+      <button class="tile" id="t-reminders" onclick="openView('reminders')">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/></svg>
+        <span class="badge" id="reminderBadge">2 left</span>
+        <div>
+          <div class="label">Reminders</div>
+          <div class="sub">Meals &amp; medication</div>
+        </div>
+      </button>
+
+      <button class="tile" id="t-mood" onclick="openView('mood')">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>
+        <div>
+          <div class="label">How I Feel</div>
+          <div class="sub">Quick check-in</div>
+        </div>
+      </button>
+
+      <button class="tile" id="t-call" onclick="openView('call')">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.4 2.1L8 9.9a16 16 0 0 0 6 6l1.4-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.8 2.1z"/></svg>
+        <div>
+          <div class="label">Call Family</div>
+          <div class="sub">One tap to connect</div>
+        </div>
+      </button>
+
+      <button class="tile" id="t-music" onclick="openView('music')">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <div>
+          <div class="label">Music &amp; Relax</div>
+          <div class="sub">Calming sounds</div>
+        </div>
+      </button>
+
+      <button class="tile" id="t-help" onclick="openView('help')">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L14.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <div>
+          <div class="label">Get Help</div>
+          <div class="sub">Call for support</div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== WEATHER DETAIL ===== -->
+  <div class="detail" id="view-weather">
+    <button class="back-btn" onclick="closeView()">&larr; Back</button>
+    <h1 class="detail-title">Weather</h1>
+    <div class="detail-body">
+      <div class="card weather-hero">
+        <svg width="90" height="90" viewBox="0 0 24 24" fill="none" stroke="#3E7C99" stroke-width="1.5"><circle cx="12" cy="10" r="4"/><path d="M12 2v2M12 16v2M4.9 5l1.4 1.4M17.7 17.7l1.4 1.4M2 10h2M20 10h2M4.9 15l1.4-1.4M17.7 2.3l1.4-1.4"/></svg>
+        <div>
+          <div class="big-temp">16&deg;</div>
+          <div class="cond">Mostly cloudy</div>
+          <div class="cond" style="font-size:19px; margin-top:4px;">Feels like 15&deg; &middot; Canberra</div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:20px; font-weight:700; margin-bottom:6px; font-family:'Baloo 2',sans-serif;">Later today</div>
+        <div class="forecast-row">
+          <div class="forecast-chip"><div>9am</div><div class="t">9&deg;</div></div>
+          <div class="forecast-chip"><div>12pm</div><div class="t">15&deg;</div></div>
+          <div class="forecast-chip"><div>3pm</div><div class="t">17&deg;</div></div>
+          <div class="forecast-chip"><div>6pm</div><div class="t">11&deg;</div></div>
+        </div>
+      </div>
+      <button class="confirm-btn" style="background:var(--weather-ic);" onclick="openView('weather-week')">See the week ahead &rarr;</button>
+    </div>
+  </div>
+
+  <!-- ===== WEATHER WEEK DETAIL ===== -->
+  <div class="detail" id="view-weather-week">
+    <button class="back-btn" onclick="openView('weather')">&larr; Back</button>
+    <h1 class="detail-title">Week Ahead &mdash; Canberra</h1>
+    <div class="detail-body">
+      <div class="card" id="weekList"></div>
+    </div>
+  </div>
+
+  <!-- ===== CALENDAR DETAIL ===== -->
+  <div class="detail" id="view-calendar">
+    <button class="back-btn" onclick="closeView()">&larr; Back</button>
+    <h1 class="detail-title">Today's Plan</h1>
+    <div class="detail-body">
+      <div class="card" id="calendarConnectCard">
+        <div style="font-size:19px; margin-bottom:14px;">Connect your Outlook calendar to show today's real events here.</div>
+        <button class="confirm-btn" style="background:var(--cal-ic);" onclick="connectOutlook()" id="connectBtn">Connect Outlook</button>
+        <div id="calendarStatus" style="margin-top:12px; font-size:16px; color:var(--ink-soft);"></div>
+      </div>
+      <div class="card" id="eventListCard" style="display:none;">
+        <div id="eventList"></div>
+        <button class="cancel-help" style="margin-top:16px;" onclick="signOutOutlook()">Disconnect Outlook</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ACTIVITY DETAIL ===== -->
+  <div class="detail" id="view-activity">
+    <button class="back-btn" onclick="closeView()">&larr; Back</button>
+    <h1 class="detail-title">Select Activity</h1>
+    <div class="detail-body">
+      <div class="card">
+        <div class="activity-grid" id="activityGrid"></div>
+        <button class="confirm-btn" onclick="confirmActivity()">Confirm choices</button>
+        <div class="confirm-msg" id="activityConfirmMsg">Saved for today &#10003;</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== REMINDERS DETAIL ===== -->
+  <div class="detail" id="view-reminders">
+    <button class="back-btn" onclick="closeView()">&larr; Back</button>
+    <h1 class="detail-title">Reminders</h1>
+    <div class="detail-body">
+      <div class="card" id="reminderList"></div>
+    </div>
+  </div>
+
+  <!-- ===== MOOD DETAIL ===== -->
+  <div class="detail" id="view-mood">
+    <button class="back-btn" onclick="closeView()">&larr; Back</button>
+    <h1 class="detail-title">How do you feel?</h1>
+    <div class="detail-body">
+      <div class="mood-grid" id="moodGrid"></div>
+    </div>
+  </div>
+
+  <!-- ===== CALL DETAIL ===== -->
+  <div class="detail" id="view-call">
+    <button class="back-btn" onclick="closeView()">&larr; Back</button>
+    <h1 class="detail-title">Call Family</h1>
+    <div class="detail-body" id="contactScreen">
+      <div class="contact-grid" id="contactGrid"></div>
+    </div>
+    <div class="calling-screen" id="callingScreen">
+      <div class="avatar" id="callingAvatar"></div>
+      <div class="contact-name" id="callingName" style="font-size:28px;"></div>
+      <div class="status" id="callingStatus">Calling&hellip;</div>
+      <button class="end-call" onclick="endCall()">End call</button>
+    </div>
+  </div>
+
+  <!-- ===== MUSIC DETAIL ===== -->
+  <div class="detail" id="view-music">
+    <button class="back-btn" onclick="closeView()">&larr; Back</button>
+    <h1 class="detail-title">Music &amp; Relax</h1>
+    <div class="detail-body">
+      <div class="card" id="playlist"></div>
+      <div class="now-playing" id="nowPlaying">
+        <div class="play-icon">&#9654;</div>
+        <div>
+          <div style="font-weight:700; font-family:'Baloo 2',sans-serif; font-size:20px;" id="npTitle"></div>
+          <div style="color:var(--ink-soft);">Playing now</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HELP DETAIL ===== -->
+  <div class="detail" id="view-help">
+    <button class="back-btn" onclick="closeView()">&larr; Back</button>
+    <div class="help-body">
+      <div id="helpAsk">
+        <button class="help-big-btn" onclick="confirmHelp()">Call for help</button>
+        <div class="help-sub">This will call your support contact right away. Tap only if you need help.</div>
+        <br>
+        <button class="cancel-help" onclick="closeView()">Cancel</button>
+      </div>
+      <div class="help-confirmed" id="helpConfirmed">
+        <svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#A93636" stroke-width="1.6"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.4 2.1L8 9.9a16 16 0 0 0 6 6l1.4-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.8 2.1z"/></svg>
+        <h2 class="detail-title" style="font-size:28px;">Calling your support contact&hellip;</h2>
+        <div class="help-sub">Stay where you are. Someone will speak with you shortly.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ---------- DATE / GREETING / ARC ----------
+  function updateHeader(){
+    const now = new Date();
+    const hour = now.getHours() + now.getMinutes()/60;
+    const greetingEl = document.getElementById('greeting');
+    const dateEl = document.getElementById('dateLine');
+
+    let greeting = 'Good evening, Andrew';
+    if(hour < 12) greeting = 'Good morning, Andrew';
+    else if(hour < 17) greeting = 'Good afternoon, Andrew';
+    greetingEl.textContent = greeting;
+
+    dateEl.textContent = now.toLocaleDateString('en-AU', { weekday:'long', day:'numeric', month:'long' });
+
+    // arc: map 6am-9pm across the 180deg arc (15 hour daylight window)
+    const start = 6, end = 21;
+    let frac = (hour - start) / (end - start);
+    frac = Math.max(0, Math.min(1, frac));
+    const angle = Math.PI * (1 - frac); // 180deg at start -> 0deg at end
+    const cx = 320, cy = 120, r = 290;
+    const x = cx - r * Math.cos(angle) * -1; // adjust below
+    // parametric point along semicircle from (30,120) to (610,120), apex at (320,-170) roughly
+    const px = 320 - r * Math.cos(angle);
+    const py = 120 - r * Math.sin(angle);
+    document.getElementById('arcMarker').setAttribute('transform', `translate(${px-30},${py-120})`);
+
+    // partial arc fill using stroke-dasharray trick
+    const path = document.getElementById('arcFill');
+    const totalLen = path.getTotalLength();
+    path.style.strokeDasharray = totalLen;
+    path.style.strokeDashoffset = totalLen * (1 - frac);
+  }
+  updateHeader();
+  setInterval(updateHeader, 60000);
+
+  // ---------- WEEK FORECAST (Canberra, °C) ----------
+  const weekForecast = [
+    {day:'Today',     high:17, low:7,  rain:5},
+    {day:'Saturday',  high:16, low:7,  rain:75},
+    {day:'Sunday',    high:17, low:4,  rain:5},
+    {day:'Monday',    high:17, low:5,  rain:10},
+    {day:'Tuesday',   high:17, low:5,  rain:0},
+    {day:'Wednesday', high:14, low:2,  rain:0},
+    {day:'Thursday',  high:16, low:2,  rain:0},
+    {day:'Friday',    high:19, low:3,  rain:0},
+  ];
+  function rainIcon(chance){
+    return chance >= 40
+      ? `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3E7C99" stroke-width="1.8" stroke-linecap="round"><path d="M16 13a5 5 0 0 0-9.6-2A4 4 0 0 0 7 19h9a3.5 3.5 0 0 0 0-7z"/><path d="M8 20v1M12 20v1M16 20v1"/></svg>`
+      : `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E8A33D" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>`;
+  }
+  function renderWeek(){
+    const list = document.getElementById('weekList');
+    list.innerHTML = '';
+    weekForecast.forEach(d=>{
+      const row = document.createElement('div');
+      row.className = 'event-row';
+      row.innerHTML = `
+        <div style="min-width:130px; font-weight:700; font-family:'Baloo 2',sans-serif;">${d.day}</div>
+        <div style="flex-shrink:0;">${rainIcon(d.rain)}</div>
+        <div style="flex:1; color:var(--ink-soft); font-size:17px;">${d.rain}% chance of rain</div>
+        <div style="font-weight:700; font-family:'Baloo 2',sans-serif; font-size:22px;">${d.high}&deg; <span style="color:var(--ink-soft); font-weight:400; font-size:18px;">/ ${d.low}&deg;</span></div>
+      `;
+      list.appendChild(row);
+    });
+  }
+  renderWeek();
+
+  // ---------- VIEW SWITCH ----------
+  function openView(name){
+    document.getElementById('home').style.display = 'none';
+    document.querySelectorAll('.detail').forEach(d => d.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+  }
+  function closeView(){
+    document.querySelectorAll('.detail').forEach(d => d.classList.remove('active'));
+    document.getElementById('home').style.display = 'flex';
+    document.getElementById('home').style.flexDirection = 'column';
+  }
+
+  // ---------- OUTLOOK CALENDAR SYNC (Microsoft Graph) ----------
+  // 1. Replace CLIENT_ID below with the Application (client) ID from your Azure app registration.
+  // 2. This page's exact URL must be added as a redirect URI on that app registration
+  //    (Authentication > Single-page application platform).
+  const CLIENT_ID = "YOUR_CLIENT_ID_HERE";
+
+  const msalConfig = {
+    auth: {
+      clientId: CLIENT_ID,
+      authority: "https://login.microsoftonline.com/common", // "common" = personal + work/school accounts
+      redirectUri: window.location.origin + window.location.pathname
+    },
+    cache: { cacheLocation: "localStorage" }
+  };
+  const msalInstance = (CLIENT_ID !== "YOUR_CLIENT_ID_HERE" && window.msal)
+    ? new msal.PublicClientApplication(msalConfig)
+    : null;
+
+  const GRAPH_SCOPES = ["Calendars.Read"];
+
+  function setCalendarStatus(msg){
+    document.getElementById('calendarStatus').textContent = msg;
+  }
+
+  async function connectOutlook(){
+    if(!msalInstance){
+      setCalendarStatus("Outlook isn't connected yet \u2014 add your Azure app's Client ID in the code first.");
+      return;
+    }
+    try{
+      setCalendarStatus("Connecting\u2026");
+      const result = await msalInstance.loginPopup({ scopes: GRAPH_SCOPES });
+      msalInstance.setActiveAccount(result.account);
+      await loadTodaysEvents();
+    }catch(err){
+      setCalendarStatus("Couldn't connect: " + err.message);
+    }
+  }
+
+  async function getGraphToken(){
+    const account = msalInstance.getActiveAccount() || msalInstance.getAllAccounts()[0];
+    if(!account) return null;
+    try{
+      const result = await msalInstance.acquireTokenSilent({ scopes: GRAPH_SCOPES, account });
+      return result.accessToken;
+    }catch(err){
+      const result = await msalInstance.acquireTokenPopup({ scopes: GRAPH_SCOPES });
+      return result.accessToken;
+    }
+  }
+
+  async function loadTodaysEvents(){
+    setCalendarStatus("Loading today's events\u2026");
+    const token = await getGraphToken();
+    if(!token){ setCalendarStatus("Not connected."); return; }
+
+    const start = new Date(); start.setHours(0,0,0,0);
+    const end = new Date(); end.setHours(23,59,59,999);
+    const url = `https://graph.microsoft.com/v1.0/me/calendarview?startdatetime=${start.toISOString()}&enddatetime=${end.toISOString()}&$orderby=start/dateTime`;
+
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if(!resp.ok){ setCalendarStatus("Couldn't load events (" + resp.status + ")."); return; }
+    const data = await resp.json();
+
+    const list = document.getElementById('eventList');
+    list.innerHTML = '';
+    if(!data.value || data.value.length === 0){
+      list.innerHTML = '<div style="font-size:19px; color:var(--ink-soft);">No events today.</div>';
+    } else {
+      data.value.forEach(ev=>{
+        const time = new Date(ev.start.dateTime + 'Z').toLocaleTimeString('en-AU', {hour:'numeric', minute:'2-digit'});
+        const row = document.createElement('div');
+        row.className = 'event-row';
+        row.innerHTML = `<div class="event-time">${time}</div><div>${ev.subject || '(No title)'}</div>`;
+        list.appendChild(row);
+      });
+    }
+    document.getElementById('calendarBadge').textContent = (data.value ? data.value.length : 0) + ' today';
+    document.getElementById('calendarConnectCard').style.display = 'none';
+    document.getElementById('eventListCard').style.display = 'block';
+  }
+
+  function signOutOutlook(){
+    if(msalInstance){
+      const account = msalInstance.getActiveAccount();
+      if(account) msalInstance.logoutPopup({ account });
+    }
+    document.getElementById('eventListCard').style.display = 'none';
+    document.getElementById('calendarConnectCard').style.display = 'block';
+    setCalendarStatus('');
+  }
+
+  // Auto-restore a previous Outlook session on page load
+  if(msalInstance && msalInstance.getAllAccounts().length > 0){
+    msalInstance.setActiveAccount(msalInstance.getAllAccounts()[0]);
+    loadTodaysEvents();
+  }
+
+  // ---------- ACTIVITY ----------
+  const activities = ['Garden','Read a book','Listen to music','Puzzle','Walk outside','Call a friend','Painting','Baking','Rest'];
+  const activityGrid = document.getElementById('activityGrid');
+  activities.forEach(a=>{
+    const el = document.createElement('div');
+    el.className = 'activity-opt';
+    el.textContent = a;
+    el.onclick = ()=> el.classList.toggle('selected');
+    activityGrid.appendChild(el);
+  });
+  function confirmActivity(){
+    document.getElementById('activityConfirmMsg').style.display = 'block';
+  }
+
+  // ---------- REMINDERS ----------
+  const reminders = [
+    {label:'Take morning medication', done:true},
+    {label:'Drink a glass of water', done:false},
+    {label:'Eat lunch', done:false},
+  ];
+  function renderReminders(){
+    const list = document.getElementById('reminderList');
+    list.innerHTML = '';
+    reminders.forEach((r, i)=>{
+      const row = document.createElement('div');
+      row.className = 'reminder-row' + (r.done ? ' done' : '');
+      row.innerHTML = `<div class="check">${r.done ? '&#10003;' : ''}</div><span class="label-text">${r.label}</span>`;
+      row.onclick = ()=>{ r.done = !r.done; renderReminders(); updateReminderBadge(); };
+      list.appendChild(row);
+    });
+  }
+  function updateReminderBadge(){
+    const left = reminders.filter(r=>!r.done).length;
+    document.getElementById('reminderBadge').textContent = left + ' left';
+  }
+  renderReminders(); updateReminderBadge();
+
+  // ---------- MOOD ----------
+  const moods = [
+    {label:'Great', path:'M8 15s1.5-2 4-2 4 2 4 2M9 9h.01M15 9h.01'},
+    {label:'Good', path:'M8 14s1.5 1 4 1 4-1 4-1M9 9h.01M15 9h.01'},
+    {label:'Okay', path:'M8 14h8M9 9h.01M15 9h.01'},
+    {label:'Not great', path:'M8 16s1.5-1 4-1 4 1 4 1M9 9h.01M15 9h.01'},
+  ];
+  const moodGrid = document.getElementById('moodGrid');
+  moods.forEach(m=>{
+    const el = document.createElement('div');
+    el.className = 'mood-opt';
+    el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#B85C5C" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="${m.path}"/></svg><div class="m-label">${m.label}</div>`;
+    el.onclick = ()=>{
+      document.querySelectorAll('.mood-opt').forEach(o=>o.classList.remove('selected'));
+      el.classList.add('selected');
+    };
+    moodGrid.appendChild(el);
+  });
+
+  // ---------- CALL FAMILY ----------
+  const contacts = [
+    {name:'Sarah', initials:'S'},
+    {name:'Tom', initials:'T'},
+    {name:'Mia', initials:'M'},
+  ];
+  const contactGrid = document.getElementById('contactGrid');
+  contacts.forEach(c=>{
+    const el = document.createElement('div');
+    el.className = 'contact-card';
+    el.innerHTML = `<div class="avatar">${c.initials}</div><div class="contact-name">${c.name}</div>`;
+    el.onclick = ()=> startCall(c);
+    contactGrid.appendChild(el);
+  });
+  function startCall(c){
+    document.getElementById('contactScreen').style.display = 'none';
+    document.getElementById('callingScreen').classList.add('active');
+    document.getElementById('callingAvatar').textContent = c.initials;
+    document.getElementById('callingName').textContent = c.name;
+    document.getElementById('callingStatus').textContent = 'Calling\u2026';
+    setTimeout(()=>{ document.getElementById('callingStatus').textContent = 'Connected'; }, 1800);
+  }
+  function endCall(){
+    document.getElementById('contactScreen').style.display = 'block';
+    document.getElementById('callingScreen').classList.remove('active');
+  }
+
+  // ---------- MUSIC ----------
+  const tracks = ['Calm Piano', 'Ocean Waves', 'Morning Birdsong', 'Soft Strings'];
+  const playlist = document.getElementById('playlist');
+  tracks.forEach(t=>{
+    const row = document.createElement('div');
+    row.className = 'playlist-row';
+    row.innerHTML = `<div class="play-icon">&#9654;</div><div>${t}</div>`;
+    row.onclick = ()=> playTrack(t);
+    playlist.appendChild(row);
+  });
+  function playTrack(t){
+    document.getElementById('nowPlaying').classList.add('active');
+    document.getElementById('npTitle').textContent = t;
+  }
+
+  // ---------- HELP ----------
+  function confirmHelp(){
+    document.getElementById('helpAsk').style.display = 'none';
+    document.getElementById('helpConfirmed').classList.add('active');
+  }
+  // reset help view whenever closed
+  document.getElementById('t-help').addEventListener('click', ()=>{
+    document.getElementById('helpAsk').style.display = 'block';
+    document.getElementById('helpConfirmed').classList.remove('active');
+  });
+</script>
+</body>
+</html>
